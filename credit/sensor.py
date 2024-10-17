@@ -1,13 +1,29 @@
 import random
 import time
 def temperature():
-	time.sleep(1)
-	temp = random.randint(-10, 100)
-	msg = f"temperature: {temp} Celsius"
-	return msg
+	return {
+		"sensor_type": "temperature",
+		"value": round(random.uniform(20, 30), 2),
+		"unit": "Celsius"
+	}
 
 def humidity():
-	time.sleep(1.5)
-	humid = random.randint(0,100)
-	msg = f"humidity: {humid}%"
-	return msg
+	return {
+		"sensor_type": "humidity",
+		"value": round(random.uniform(30, 80), 2),
+		"unit": "%"
+	}
+
+def pressure():
+	return {
+		"sensor_type": "pressure",
+		"value": round(random.uniform(980, 1050), 2),
+		"unit": "hPa"
+	}
+
+def light():
+	return {
+		"sensor_type": "light",
+		"value": round(random.uniform(0, 1000), 2),
+		"unit": "Lux"
+	}

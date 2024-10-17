@@ -22,6 +22,13 @@ MAX_RECONNECT_DELAY = 60
 topic_temperature = "<103825154>/temperature"
 topic_humidity = "<103825154>/humidity"
 
+topics = [
+	("<103825154>/temperature", sensor.temperature),
+	("<103825154>/humidity", sensor.humidity),
+	("<103825154>/pressure", sensor.pressure),
+	("<103825154>/light", sensor.light),
+]
+
 # When the client initiate connection
 def on_connect(client, userdata, flags, rc):
 	if rc == 0:
@@ -67,10 +74,14 @@ def connect_mqtt():
 def on_publish(client, topic_name, func):
 	while True:
 		try:
+			time.sleep(random.uniform(1,2))
 			msg = func()
+			sensor_type = msg["sensor_type"]
+			value = msg["value"]
+			unit = msg["unit"]
+			msg = f"{sensor_type}: {value} {unit}"
 			result = client.publish(topic_name, msg)
-			status = result[0]
-			if status == 0:
+			if result[0] == 0:
 				print("\n--------------------[PUB]--------------------")
 				print(json.dumps({"topic": topic_name, "msg": msg}, indent=4))
 				#print(f"Send `{msg}` to topic `{topic_name}`")
@@ -82,8 +93,8 @@ def on_publish(client, topic_name, func):
 			break
 
 def publish(client):
-	threading.Thread(target=on_publish, args=(client, topic_temperature, sensor.temperature)).start()
-	threading.Thread(target=on_publish, args=(client, topic_humidity, sensor.humidity)).start()
+	for topic in topics:
+		threading.Thread(target=on_publish, args=(client, topic[0], topic[1])).start()
 
 def subscribe(client):
 	client.subscribe("<103825154>/#")
