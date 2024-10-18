@@ -5,6 +5,7 @@ import time
 import threading
 import json
 import sensor
+import hashlib
 
 broker = 'rule28.i4t.swin.edu.au'
 #broker = "broker.emqx.io"
@@ -17,10 +18,6 @@ FIRST_RECONNECT_DELAY = 1
 RECONNECT_RATE = 2
 MAX_RECONNECT_COUNT = 12
 MAX_RECONNECT_DELAY = 60
-
-# We have two topics for now
-topic_temperature = "<103825154>/temperature"
-topic_humidity = "<103825154>/humidity"
 
 topics = [
 	("<103825154>/temperature", sensor.temperature),
@@ -75,15 +72,18 @@ def on_publish(client, topic_name, func):
 	while True:
 		try:
 			time.sleep(random.uniform(1,2))
-			msg = func()
-			sensor_type = msg["sensor_type"]
-			value = msg["value"]
-			unit = msg["unit"]
-			msg = f"{sensor_type}: {value} {unit}"
+
+			content = func()
+			sensor_type = content["sensor_type"]
+			value = content["value"]
+			unit = content["unit"]
+			content = f"{sensor_type}: {value} {unit}"
+			signature = hashlib.sha256(content.encode()).hexdigest()
+			msg = json.dumps({"topic": topic_name, "hash": signature, "msg": content})
 			result = client.publish(topic_name, msg)
 			if result[0] == 0:
 				print("\n--------------------[PUB]--------------------")
-				print(json.dumps({"topic": topic_name, "msg": msg}, indent=4))
+				print(msg)
 				#print(f"Send `{msg}` to topic `{topic_name}`")
 				print("---------------------------------------------")
 			else:
