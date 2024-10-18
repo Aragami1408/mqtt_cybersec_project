@@ -11,9 +11,9 @@ password = "<103825154>"
 
 def on_connect(client, userdata, flags, rc):
 	if rc == 0:
-		print("Connected to MQTT Broker")
+		print("Connected to mqtt broker")
 	else:
-		print("Failed to connect, return code %d\n", rc)
+		print("failed to connect, return code %d\n", rc)
 
 def connect_mqtt():
 	client = mqtt_client.Client(client_id)
@@ -23,10 +23,7 @@ def connect_mqtt():
 	return client
 
 def on_message(client, userdata, msg):
-	print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-
-topic_temperature = "<103825154>/temperature"
-topic_humidity = "<103825154>/humidity"
+	print(f"received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
 def subscribe(client, topic):
 	client.subscribe(topic)
@@ -34,8 +31,7 @@ def subscribe(client, topic):
 
 if __name__ == "__main__":
 	client = connect_mqtt()
-	subscribe(client, topic_temperature)
-	subscribe(client, topic_humidity)
+	subscribe(client, "<103825154>/#")
 	try:
 		client.loop_forever()
 	except KeyboardInterrupt:
