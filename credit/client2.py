@@ -1,4 +1,5 @@
 import random
+import json
 
 from paho.mqtt import client as mqtt_client
 
@@ -23,7 +24,9 @@ def connect_mqtt():
 	return client
 
 def on_message(client, userdata, msg):
-	print(f"received `{msg.payload.decode()}` from `{msg.topic}` topic")
+	print("\n====================[SUB]====================")
+	print(json.dumps({"topic": msg.topic, "qos": msg.qos, "retained": msg.retain, "message": msg.payload.decode()}, indent=4))
+	print("=============================================")
 
 if __name__ == "__main__":
 	client = connect_mqtt()
