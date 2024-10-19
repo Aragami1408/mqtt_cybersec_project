@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import scrolledtext, messagebox
 import random
 import json
-import sensor
 import hashlib
 from paho.mqtt import client as mqtt_client
 
@@ -73,7 +72,7 @@ class MQTTClient:
 		topic = self.publish_topic_entry.get()
 		content = self.publish_message_entry.get()
 		signature = hashlib.sha256(content.encode()).hexdigest()
-		message = json.dumps({"topic": topic, "hash": signature, "msg": content})
+		message = json.dumps({"topic": topic, "hash": signature, "message": content})
 		result = self.client.publish(topic, message)
 		if result[0] == 0:
 			self.messages_text.insert(tk.END, "\n--------------------[PUB]--------------------\n")
@@ -82,10 +81,6 @@ class MQTTClient:
 			self.messages_text.insert(tk.END, "---------------------------------------------\n")
 		else:
 			self.messages_text.insert(tk.END, f"Failed to send message to topic {topic}")
-
-
-
-
 
 	def on_message(self, client, userdata, msg):
 		self.messages_text.insert(tk.END, "\n====================[SUB]====================\n")
