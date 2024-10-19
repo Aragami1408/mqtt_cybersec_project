@@ -4,8 +4,9 @@ import logging
 import time
 import threading
 import json
-import sensor
 import hashlib
+
+import sensor
 
 broker = 'rule28.i4t.swin.edu.au'
 #broker = "broker.emqx.io"
@@ -19,12 +20,13 @@ RECONNECT_RATE = 2
 MAX_RECONNECT_COUNT = 12
 MAX_RECONNECT_DELAY = 60
 
-topics = [
-	("<103825154>/temperature", sensor.temperature),
-	("<103825154>/humidity", sensor.humidity),
-	("<103825154>/pressure", sensor.pressure),
-	("<103825154>/light", sensor.light),
-]
+topics = {
+	"accelerometer": sensor.accelerometer,
+	"temperature": sensor.temperature,
+	"pressure": sensor.pressure,
+	"strain": sensor.strain,
+	"rotary_encoder": sensor.rotary_encoder
+}
 
 # When the client initiate connection
 def on_connect(client, userdata, flags, rc):
@@ -65,41 +67,39 @@ def connect_mqtt():
 	client.username_pw_set(username, password)
 	client.on_connect = on_connect
 	client.on_disconnect = on_disconnect
+	client.on_message = on_message
 	client.connect(broker, port)
 	return client
 
-def on_publish(client, topic_name, func):
+def on_publish(client, sensor_name, sensor_func):
 	while True:
-		try:
-			time.sleep(random.uniform(1,2))
+		topic = f"<103825154>/sensors/{sensor_name}"
+		sensor_data = sensor_func()
+		message = {
+			"data": sensor_data,
+			"timestamp": time.time()
+		}
+		message_json = json.dumps(message)
+		sha256_hash = hashlib.sha256(message_json.encode()).hexdigest()
 
-			content = func()
-			sensor_type = content["sensor_type"]
-			value = content["value"]
-			unit = content["unit"]
-			content = f"{sensor_type}: {value} {unit}"
-			signature = hashlib.sha256(content.encode()).hexdigest()
-			msg = json.dumps({"topic": topic_name, "hash": signature, "msg": content})
-			result = client.publish(topic_name, msg)
-			if result[0] == 0:
-				print("\n--------------------[PUB]--------------------")
-				print(msg)
-				#print(f"Send `{msg}` to topic `{topic_name}`")
-				print("---------------------------------------------")
-			else:
-				print(f"Failed to send message to topic {topic_name}")
-		except KeyboardInterrupt:
-			print("Terminate program")
-			break
+		full_message = {
+			"topic": topic,
+			"hash": sha256_hash,
+			"message": message,
+		}
+		full_message_json = json.dumps(full_message)
+
+		result = client.publish(topic, full_message_json)
+		time.sleep(1)
+
 
 def publish(client):
-	for topic in topics:
-		threading.Thread(target=on_publish, args=(client, topic[0], topic[1])).start()
+	for sensor_name, sensor_func in topics.items():
+		threading.Thread(target=on_publish, args=(client, sensor_name, sensor_func)).start()
 
 def subscribe(client):
 	client.subscribe("<103825154>/#")
 	client.subscribe("public/#")
-	client.on_message = on_message
 
 if __name__ == "__main__":
 	client = connect_mqtt()

@@ -1,29 +1,34 @@
 import random
 import time
-def temperature():
+
+def accelerometer():
 	return {
-		"sensor_type": "temperature",
-		"value": round(random.uniform(20, 30), 2),
-		"unit": "Celsius"
+		"x": round(random.uniform(-10, 10), 2),
+		"y": round(random.uniform(-10, 10), 2),
+		"z": round(random.uniform(-10, 10), 2),
+		"unit": "m/s^2"
 	}
 
-def humidity():
+def temperature():
 	return {
-		"sensor_type": "humidity",
-		"value": round(random.uniform(30, 80), 2),
-		"unit": "%"
+		"temperature": round(random.uniform(20, 30), 2),
+		"unit": "°C"
 	}
 
 def pressure():
 	return {
-		"sensor_type": "pressure",
-		"value": round(random.uniform(980, 1050), 2),
-		"unit": "hPa"
+		"pressure": round(random.uniform(980, 1050), 2),
+		"unit": "kPa"
 	}
 
-def light():
+def strain():
 	return {
-		"sensor_type": "light",
-		"value": round(random.uniform(0, 1000), 2),
-		"unit": "Lux"
+		"strain": round(random.uniform(0, 1000), 2),
+		"unit": "μɛ"
+	}
+
+def rotary_encoder():
+	return {
+		"angle": round(random.uniform(0, 360), 1),
+		"unit": "degrees"
 	}
