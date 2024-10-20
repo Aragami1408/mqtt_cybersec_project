@@ -1,93 +1,116 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox
-import random
-import json
-import hashlib
-from paho.mqtt import client as mqtt_client
-
-broker = 'rule28.i4t.swin.edu.au'
-#broker = "broker.emqx.io"
-port = 1883
-client_id = f"python-mqtt-{random.randint(0, 1000)}"
-username = "<103825154>"
-password = "<103825154>"
+from tkinter import scrolledtext, messagebox, ttk
+import paho.mqtt.client as mqtt
 
 class MQTTClient:
 	def __init__(self, master):
 		self.master = master
-		self.master.title("Simple MQTT Client")
-		self.master.geometry("800x600")
+		self.master.title("MQTT Client")
+		self.master.geometry("500x600")
 
-		self.client = mqtt_client.Client(client_id)
-		self.client.username_pw_set(username, password)
+		self.client = mqtt.Client()
 		self.client.on_connect = self.on_connect
-		self.client.connect(broker, port)
+		self.client.on_message = self.on_message
 
 		self.create_widgets()
-		self.connect()
 
 	def create_widgets(self):
-		# Subscribe
-		tk.Label(self.master, text="Subscribe Topic:").grid(row=0, column=0, sticky="w")
-		self.subscribe_entry = tk.Entry(self.master)
+		# Connection Frame
+		connection_frame = ttk.LabelFrame(self.master, text="Broker Connection")
+		connection_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+
+		ttk.Label(connection_frame, text="Broker:").grid(row=0, column=0, sticky="w")
+		self.broker_entry = ttk.Entry(connection_frame)
+		self.broker_entry.grid(row=0, column=1)
+		self.broker_entry.insert(0, "rule28.i4t.swin.edu.au")
+
+		ttk.Label(connection_frame, text="Port:").grid(row=1, column=0, sticky="w")
+		self.port_entry = ttk.Entry(connection_frame)
+		self.port_entry.grid(row=1, column=1)
+		self.port_entry.insert(0, "1883")
+
+		ttk.Label(connection_frame, text="Username:").grid(row=2, column=0, sticky="w")
+		self.username_entry = ttk.Entry(connection_frame)
+		self.username_entry.grid(row=2, column=1)
+
+		ttk.Label(connection_frame, text="Password:").grid(row=3, column=0, sticky="w")
+		self.password_entry = ttk.Entry(connection_frame, show="*")
+		self.password_entry.grid(row=3, column=1)
+
+		self.connect_button = ttk.Button(connection_frame, text="Connect", command=self.connect)
+		self.connect_button.grid(row=4, column=0, columnspan=2, pady=5)
+
+		# Subscribe Frame
+		subscribe_frame = ttk.LabelFrame(self.master, text="Subscribe")
+		subscribe_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+
+		ttk.Label(subscribe_frame, text="Topic:").grid(row=0, column=0, sticky="w")
+		self.subscribe_entry = ttk.Entry(subscribe_frame)
 		self.subscribe_entry.grid(row=0, column=1)
 
-		self.subscribe_button = tk.Button(self.master, text="Subscribe", command=self.subscribe)
-		self.subscribe_button.grid(row=1,column=1)
+		self.subscribe_button = ttk.Button(subscribe_frame, text="Subscribe", command=self.subscribe)
+		self.subscribe_button.grid(row=1, column=0, columnspan=2, pady=5)
 
-		# Publish
-		tk.Label(self.master, text="Publish Topic:").grid(row=2,column=0, sticky="w")
-		self.publish_topic_entry = tk.Entry(self.master)
-		self.publish_topic_entry.grid(row=2, column=1)
+		# Publish Frame
+		publish_frame = ttk.LabelFrame(self.master, text="Publish")
+		publish_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
 
-		tk.Label(self.master, text="Message:").grid(row=3,column=0, sticky="w")
-		self.publish_message_entry = tk.Entry(self.master)
-		self.publish_message_entry.grid(row=3,column=1)
+		ttk.Label(publish_frame, text="Topic:").grid(row=0, column=0, sticky="w")
+		self.publish_topic_entry = ttk.Entry(publish_frame)
+		self.publish_topic_entry.grid(row=0, column=1)
 
-		self.publish_button = tk.Button(self.master, text="Publish", command=self.publish)
-		self.publish_button.grid(row=4,column=1,columnspan=2)
+		ttk.Label(publish_frame, text="Message:").grid(row=1, column=0, sticky="w")
+		self.publish_message_entry = ttk.Entry(publish_frame)
+		self.publish_message_entry.grid(row=1, column=1)
 
-		self.messages_text = scrolledtext.ScrolledText(self.master, height=15)
-		self.messages_text.grid(row=5,column=0,columnspan=3,padx=5,pady=5)
+		self.publish_button = ttk.Button(publish_frame, text="Publish", command=self.publish)
+		self.publish_button.grid(row=2, column=0, columnspan=2, pady=5)
+
+		# Messages Frame
+		messages_frame = ttk.LabelFrame(self.master, text="Messages")
+		messages_frame.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+
+		self.messages_text = scrolledtext.ScrolledText(messages_frame, height=15)
+		self.messages_text.pack(expand=True, fill="both")
+
+		self.master.grid_columnconfigure(0, weight=1)
+		self.master.grid_rowconfigure(3, weight=1)
+
+	def connect(self):
+		broker = self.broker_entry.get()
+		port = int(self.port_entry.get())
+		username = self.username_entry.get()
+		password = self.password_entry.get()
+
+		if username and password:
+			self.client.username_pw_set(username, password)
+
+			try:
+				self.client.connect(broker, port)
+				self.client.loop_start()
+				messagebox.showinfo("Connection", f"Connected to {broker}:{port}")
+			except Exception as e:
+				messagebox.showerror("Connection Error", str(e))
+
+	def subscribe(self):
+		topic = self.subscribe_entry.get()
+		self.client.subscribe(topic)
+		self.messages_text.insert(tk.END, f"Subscribed to {topic}\n")
+
+	def publish(self):
+		topic = self.publish_topic_entry.get()
+		message = self.publish_message_entry.get()
+		self.client.publish(topic, message)
+		self.messages_text.insert(tk.END, f"Published to {topic}: {message}\n")
 
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
 			self.messages_text.insert(tk.END, "Connected to MQTT Broker\n")
 		else:
-			self.messages_text.insert(tk.END, f"Failed to connect, return code {rc}\n")
-
-	def connect(self):
-		try:
-			self.client.loop_start()
-		except Exception as e:
-			messagebox.showerror("Connection Error", str(e))
-
-	def subscribe(self):
-		topic = self.subscribe_entry.get()
-		self.client.subscribe(topic)
-		self.client.on_message = self.on_message
-		self.messages_text.insert(tk.END, f"Subscribed to {topic}\n")
-
-	def publish(self):
-		topic = self.publish_topic_entry.get()
-		content = self.publish_message_entry.get()
-		signature = hashlib.sha256(content.encode()).hexdigest()
-		message = json.dumps({"topic": topic, "hash": signature, "message": content})
-		result = self.client.publish(topic, message)
-		if result[0] == 0:
-			self.messages_text.insert(tk.END, "\n--------------------[PUB]--------------------\n")
-			self.messages_text.insert(tk.END, message)
-			self.messages_text.insert(tk.END,"\n")
-			self.messages_text.insert(tk.END, "---------------------------------------------\n")
-		else:
-			self.messages_text.insert(tk.END, f"Failed to send message to topic {topic}")
+			self.messages_text.insert(tk.END, f"Connection failed with code {rc}\n")
 
 	def on_message(self, client, userdata, msg):
-		self.messages_text.insert(tk.END, "\n====================[SUB]====================\n")
-		self.messages_text.insert(tk.END, json.dumps({"topic": msg.topic, "qos": msg.qos, "retained": msg.retain, "message": msg.payload.decode()}, indent=4))
-		self.messages_text.insert(tk.END,"\n")
-		self.messages_text.insert(tk.END, "=============================================\n")
-
+		self.messages_text.insert(tk.END, f"Received message on {msg.topic}: {msg.payload.decode()}\n")
 
 if __name__ == "__main__":
 	root = tk.Tk()
