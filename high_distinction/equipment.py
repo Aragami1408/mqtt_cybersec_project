@@ -3,6 +3,7 @@ import time
 import random
 import json
 import argparse
+import os
 
 import config
 
@@ -66,6 +67,10 @@ class Equipment:
 			"conveyor": ["speed", "load", "temperature"]
 		}
 
+		self.maintenance_dir = "maintenance_log"
+		if not os.path.exists(self.maintenance_dir):
+			os.makedirs(self.maintenance_dir)
+
 		self.sensor_types = self.sensor_configs.get(equipment_type, [])
 
 	def on_connect(self, client, userdata, flags, rc):
@@ -106,7 +111,7 @@ class Equipment:
 
 	def dump_maintenance_log(self, sensor_type, alert_data):
 		maintenance_message = (
-			"----------\n"
+			"\n----------\n"
 			f"Maintenance required for {self.equipment_type}\n"
 			f"Sensor: {sensor_type}\n"
 			f"Alert Level: {alert_data['alert_level']}\n"
@@ -114,8 +119,13 @@ class Equipment:
 			f"Sensor Reading: {alert_data['sensor_reading']}\n"
 			f"Threshold: {alert_data['threshold']}\n"
 			f"Timestamp: {time.ctime(alert_data['timestamp'])}\n"
-			"----------\n"
+			"\n----------\n"
 		)
+
+		filename = os.path.join(self.maintenance_dir, f"{self.equipment_type}_maintenance.log")
+		with open(filename, "a") as f:
+			f.write(maintenance_message)
+
 		print(f"Maintenance message logged for {self.equipment_type}")
 
 	def publish_sensor_data(self):
@@ -134,7 +144,7 @@ class Equipment:
 		try:
 			while True:
 				self.publish_sensor_data()
-				time.sleep(1)
+				time.sleep(5)
 		except KeyboardInterrupt:
 			print(f"Sensor node stopped: {self.equipment_type}")
 			self.client.loop_stop()
