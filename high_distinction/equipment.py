@@ -77,16 +77,18 @@ class Equipment:
 		if rc == 0:
 			print(f"Connected to MQTT Broker: {self.equipment_type}")
 			self.client.subscribe(f"{config.TOP_LEVEL_TOPIC}/factory/alerts/{self.equipment_type}/#")
+			self.client.subscribe(f"public/#")
 		else:
 			print(f"Failed to connect, return code {rc}")
 
 	def on_message(self, client, userdata, msg):
 		try:
-			payload = json.loads(msg.payload.decode())
-			topic_parts = msg.topic.split("/")
-			sensor_type = topic_parts[-1]
+			if (msg.topic.startswith(f"{config.TOP_LEVEL_TOPIC}/factory/alerts")):
+				payload = json.loads(msg.payload.decode())
+				topic_parts = msg.topic.split("/")
+				sensor_type = topic_parts[-1]
 
-			self.generate_maintenance_message(sensor_type, payload)
+				self.generate_maintenance_message(sensor_type, payload)
 		except json.JSONDecodeError:
 			print(f"Received invalid JSON on topic {msg.topic}")
 		except IndexError:
