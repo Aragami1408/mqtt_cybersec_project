@@ -4,6 +4,7 @@ import random
 import json
 import argparse
 import os
+import threading
 
 import config
 
@@ -49,8 +50,9 @@ def get_unit(sensor_type):
 	}
 	return units.get(sensor_type, "")
 
-class Equipment:
+class Equipment(threading.Thread):
 	def __init__(self, equipment_type):
+		threading.Thread.__init__(self)
 		self.client = mqtt.Client(f"Equipment_{equipment_type}")
 		self.client.username_pw_set(config.USERNAME, config.PASSWORD)
 		self.client.on_connect = self.on_connect
@@ -72,11 +74,13 @@ class Equipment:
 			os.makedirs(self.maintenance_dir)
 
 		self.sensor_types = self.sensor_configs.get(equipment_type, [])
+		self.running = False
 
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
 			print(f"Connected to MQTT Broker: {self.equipment_type}")
 			self.client.subscribe(f"{config.TOP_LEVEL_TOPIC}/factory/alerts/{self.equipment_type}/#")
+			self.client.subscribe(f"{config.TOP_LEVEL_TOPIC}/factory/command/{self.equipment_type}")
 			self.client.subscribe(f"public/#")
 		else:
 			print(f"Failed to connect, return code {rc}")
@@ -87,8 +91,15 @@ class Equipment:
 				payload = json.loads(msg.payload.decode())
 				topic_parts = msg.topic.split("/")
 				sensor_type = topic_parts[-1]
-
 				self.generate_maintenance_message(sensor_type, payload)
+			elif msg.topic == f"{config.TOP_LEVEL_TOPIC}/factory/command/{self.equipment_type}":
+				command = msg.payload.decode()
+				if command == "!start":
+					self.running = True
+					print(f"Started {self.equipment_type}")
+				elif command == "!stop":
+					self.running = False
+					print(f"Stopped {self.equipment_type}")
 		except json.JSONDecodeError:
 			print(f"Received invalid JSON on topic {msg.topic}")
 		except IndexError:
@@ -145,16 +156,27 @@ class Equipment:
 		self.client.loop_start()
 		try:
 			while True:
-				self.publish_sensor_data()
-				time.sleep(5)
+				if self.running:
+					self.publish_sensor_data()
+				time.sleep(2)
 		except KeyboardInterrupt:
 			print(f"Sensor node stopped: {self.equipment_type}")
+		finally:
 			self.client.loop_stop()
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description="Equipment")
-	parser.add_argument("equipment_type", choices=["cnc_mill", "robot_arm", "agv", "injection_molder", "conveyor"],
-			help="Type of equipment to simulate")
-	args = parser.parse_args()
+	equipment_types = ["cnc_mill", "robot_arm", "agv", "injection_molder", "conveyor"]
+	equipment_threads = []
 
-	Equipment(args.equipment_type).run()
+	for equipment_type in equipment_types:
+		equipment = Equipment(equipment_type)
+		equipment.start()
+		equipment_threads.append(equipment)
+
+	try:
+		for thread in equipment_threads:
+			thread.join()
+	except KeyboardInterrupt:
+		print("Stopping all equipment...")
+		for thread in equipment_threads:
+			thread.running = False
