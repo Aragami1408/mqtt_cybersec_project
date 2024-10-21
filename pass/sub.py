@@ -31,7 +31,7 @@ def subscribe(client, topic):
 
 if __name__ == "__main__":
 	client = connect_mqtt()
-	subscribe(client, "<103825154>/#")
+	subscribe(client, "<103825154>/temperature")
 	try:
 		client.loop_forever()
 	except KeyboardInterrupt:
