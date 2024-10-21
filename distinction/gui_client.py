@@ -7,6 +7,7 @@ class MQTTClient:
 		self.master = master
 		self.master.title("MQTT Client")
 		self.master.geometry("500x600")
+		self.master.resizable(False, False)
 
 		self.client = mqtt.Client()
 		self.client.on_connect = self.on_connect
@@ -115,7 +116,6 @@ class MQTTClient:
 			try:
 				self.client.connect(broker, port)
 				self.client.loop_start()
-				messagebox.showinfo("Connection", f"Connected to {broker}:{port}")
 			except Exception as e:
 				messagebox.showerror("Connection Error", str(e))
 
@@ -132,7 +132,10 @@ class MQTTClient:
 		self.messages_text.insert(tk.END, f"\tQoS: {int(self.qos_publish.get())}. Retain = {bool(self.retain.get())}\n")
 
 	def on_connect(self, client, userdata, flags, rc):
+		broker = self.broker_entry.get()
+		port = int(self.port_entry.get())
 		if rc == 0:
+			messagebox.showinfo("Connection", f"Connected to {broker}:{port}")
 			self.messages_text.insert(tk.END, "Connected to MQTT Broker\n")
 		else:
 			self.messages_text.insert(tk.END, f"Connection failed with code {rc}\n")
