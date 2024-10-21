@@ -35,6 +35,7 @@ class FactoryMonitorGUI:
 		)
 		self.equipment_combo.set("cnc_mill")
 		self.equipment_combo.grid(row=0, column=1, padx=5, pady=5)
+		self.equipment_combo.bind("<<ComboboxSelected>>", self.update_sensor_display)
 
 		self.start_button = ttk.Button(control_frame, text="Start", command=self.start_equipment)
 		self.start_button.grid(row=0, column=2, padx=5, pady=5)
@@ -86,46 +87,34 @@ class FactoryMonitorGUI:
 			unit = payload['unit']
 			self.sensor_labels[sensor_type].config(text=f"{value} {unit}")
 
+	def update_sensor_display(self, event):
+		selected_equipment = self.equipment_var.get()
+		for sensor in self.sensor_types:
+			self.sensor_labels[sensor].config(text="N/A")
+
 	def show_alert(self, equipment_type, sensor_type, payload):
 		alert_message = f"Alert for {equipment_type} - {sensor_type}:\n{payload['message']}\nReading: {payload['sensor_reading']}\nThreshold: {payload['threshold']}"
 		messagebox.showwarning("Equipment Alert", alert_message)
 
 	def start_equipment(self):
-		equipment = self.equipment_var.get()
-		if equipment in self.equipment_processes:
-			messagebox.showinfo("Info", f"{equipment} is already running")
-			return
-
-		try:
-			process = subprocess.Popen(["python3", "equipment.py", equipment])
-			self.equipment_processes[equipment] = process
-			messagebox.showinfo("Info", f"Started {equipment} sensor readings")
-		except Exception as e:
-			messagebox.showerror("Error", f"Failed to start {equipment}: {str(e)}")
-
+		equipment_type = self.equipment_var.get()
+		topic = f"{config.TOP_LEVEL_TOPIC}/factory/command/{equipment_type}"
+		self.client.publish(topic, "!start")
 	def stop_equipment(self):
-		equipment = self.equipment_var.get()
-		if equipment not in self.equipment_processes:
-			messagebox.showerror("Error", f"{equipment} is not running")
-			return
+		equipment_type = self.equipment_var.get()
+		topic = f"{config.TOP_LEVEL_TOPIC}/factory/command/{equipment_type}"
+		self.client.publish(topic, "!stop")
 
-		try:
-			self.equipment_processes[equipment]
-			self.equipment_processes[equipment].terminate()
-			del self.equipment_processes[equipment]
-			messagebox.showinfo("Info", f"{equipment} sensor terminated")
-		except Exception as e:
-			messagebox.showerror("Error", f"Failed to stop {equipment}: {str(e)}")
-
+def on_closing():
+	if messagebox.askokcancel("Quit", "Do you want to quit?"):
+		equipment_process.terminate()
+		monitor_process.terminate()
+		root.destroy()
 
 if __name__ == "__main__":
-	process = subprocess.Popen(["python3", "monitor.py"])
+	equipment_process = subprocess.Popen(["python3", "equipment.py"])
+	monitor_process = subprocess.Popen(["python3", "monitor.py"])
 	root = tk.Tk()
 	app = FactoryMonitorGUI(root)
-	def on_closing():
-		app.stop_equipment()
-		if messagebox.askokcancel("Quit", "Do you want to quit?"):
-			root.destroy()
 	root.protocol("WM_DELETE_WINDOW", on_closing)
 	root.mainloop()
-	process.terminate()
