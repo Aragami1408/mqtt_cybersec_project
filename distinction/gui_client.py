@@ -48,6 +48,17 @@ class MQTTClient:
 		self.subscribe_entry = ttk.Entry(subscribe_frame)
 		self.subscribe_entry.grid(row=0, column=1)
 
+		ttk.Label(subscribe_frame, text="QoS:").grid(row=0, column=2, padx=5)
+		self.qos_subscribe = tk.StringVar()
+		self.qos_subscribe_combobox = ttk.Combobox(subscribe_frame, textvariable=self.qos_subscribe)
+		self.qos_subscribe_combobox.grid(row=0, column=3)
+		self.qos_subscribe_combobox['values'] = (
+			'0',
+			'1',
+			'2'
+		)
+		self.qos_subscribe_combobox.current(0)
+
 		self.subscribe_button = ttk.Button(subscribe_frame, text="Subscribe", command=self.subscribe)
 		self.subscribe_button.grid(row=1, column=0, columnspan=2, pady=5)
 
@@ -57,14 +68,30 @@ class MQTTClient:
 
 		ttk.Label(publish_frame, text="Topic:").grid(row=0, column=0, sticky="w")
 		self.publish_topic_entry = ttk.Entry(publish_frame)
-		self.publish_topic_entry.grid(row=0, column=1)
+		self.publish_topic_entry.grid(row=0, column=3)
 
 		ttk.Label(publish_frame, text="Message:").grid(row=1, column=0, sticky="w")
 		self.publish_message_entry = ttk.Entry(publish_frame)
-		self.publish_message_entry.grid(row=1, column=1)
+		self.publish_message_entry.grid(row=1, column=3)
+
+		ttk.Label(publish_frame, text="Retain:").grid(row=2,column=0, sticky="w", columnspan=2)
+		self.retain = tk.IntVar()
+		self.retain_checkbutton = ttk.Checkbutton(publish_frame, variable=self.retain, onvalue=1, offvalue=0)
+		self.retain_checkbutton.grid(row=2, column=1)
+
+		ttk.Label(publish_frame, text="QoS:").grid(row=2, column=2, padx=5)
+		self.qos_publish = tk.StringVar()
+		self.qos_publish_combobox = ttk.Combobox(publish_frame, textvariable=self.qos_publish)
+		self.qos_publish_combobox.grid(row=2,column=3)
+		self.qos_publish_combobox['values'] = (
+			'0',
+			'1',
+			'2'
+		)
+		self.qos_publish_combobox.current(0)
 
 		self.publish_button = ttk.Button(publish_frame, text="Publish", command=self.publish)
-		self.publish_button.grid(row=2, column=0, columnspan=2, pady=5)
+		self.publish_button.grid(row=3, column=0, columnspan=2, pady=5)
 
 		# Messages Frame
 		messages_frame = ttk.LabelFrame(self.master, text="Messages")
@@ -94,14 +121,15 @@ class MQTTClient:
 
 	def subscribe(self):
 		topic = self.subscribe_entry.get()
-		self.client.subscribe(topic)
+		self.client.subscribe(topic, qos=int(self.qos_subscribe.get()))
 		self.messages_text.insert(tk.END, f"Subscribed to {topic}\n")
 
 	def publish(self):
 		topic = self.publish_topic_entry.get()
 		message = self.publish_message_entry.get()
-		self.client.publish(topic, message)
+		self.client.publish(topic, message, qos=int(self.qos_publish.get()), retain=bool(self.retain.get()))
 		self.messages_text.insert(tk.END, f"Published to {topic}: {message}\n")
+		self.messages_text.insert(tk.END, f"\tQoS: {int(self.qos_publish.get())}. Retain = {bool(self.retain.get())}\n")
 
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
@@ -111,6 +139,7 @@ class MQTTClient:
 
 	def on_message(self, client, userdata, msg):
 		self.messages_text.insert(tk.END, f"Received message on {msg.topic}: {msg.payload.decode()}\n")
+		self.messages_text.insert(tk.END, f"\tQos: {int(self.qos_subscribe.get())}\n")
 
 if __name__ == "__main__":
 	root = tk.Tk()
