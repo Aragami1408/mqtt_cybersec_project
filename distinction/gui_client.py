@@ -120,16 +120,20 @@ class MQTTClient:
 				messagebox.showerror("Connection Error", str(e))
 
 	def subscribe(self):
-		topic = self.subscribe_entry.get()
-		self.client.subscribe(topic, qos=int(self.qos_subscribe.get()))
-		self.messages_text.insert(tk.END, f"Subscribed to {topic}\n")
+		topics = self.subscribe_entry.get().split(',')
+		for topic in topics:
+			topic = topic.strip()
+			self.client.subscribe(topic, qos=int(self.qos_subscribe.get()))
+			self.messages_text.insert(tk.END, f"Subscribed to {topic}\n")
 
 	def publish(self):
-		topic = self.publish_topic_entry.get()
+		topics = self.publish_topic_entry.get().split(',')
 		message = self.publish_message_entry.get()
-		self.client.publish(topic, message, qos=int(self.qos_publish.get()), retain=bool(self.retain.get()))
-		self.messages_text.insert(tk.END, f"Published to {topic}: {message}\n")
-		self.messages_text.insert(tk.END, f"\tQoS: {int(self.qos_publish.get())}. Retain = {bool(self.retain.get())}\n")
+		for topic in topics:
+			topic = topic.strip()
+			self.client.publish(topic, message, qos=int(self.qos_publish.get()), retain=bool(self.retain.get()))
+			self.messages_text.insert(tk.END, f"Published to {topic}: {message}\n")
+			self.messages_text.insert(tk.END, f"\tQoS: {int(self.qos_publish.get())}. Retain = {bool(self.retain.get())}\n")
 
 	def on_connect(self, client, userdata, flags, rc):
 		broker = self.broker_entry.get()
