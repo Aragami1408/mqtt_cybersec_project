@@ -1,6 +1,8 @@
 import random
 import time
 
+# all of the sensor functions here return randomly generated numbers
+
 def accelerometer():
 	return {
 		"x": round(random.uniform(-10, 10), 2),

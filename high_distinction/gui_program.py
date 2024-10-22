@@ -6,6 +6,7 @@ import paho.mqtt.client as mqtt
 import config
 
 class FactoryMonitorGUI:
+	# setup windows, handle mqtt connect and draw widgets
 	def __init__(self, master):
 		self.master = master
 		master.title("Factory Monitor")
@@ -25,28 +26,29 @@ class FactoryMonitorGUI:
 
 	def create_widgets(self):
 		# Equipment Control Frame
-		control_frame = ttk.LabelFrame(self.master, text="Equipment Control")
+		control_frame = ttk.LabelFrame(self.master, text="Equipment Control") # label frame for equipment control
 		control_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-		self.equipment_var = tk.StringVar()
+		self.equipment_var = tk.StringVar() # equipment combo box to select current equipment type
 		self.equipment_combo = ttk.Combobox(control_frame, textvariable=self.equipment_var)
 		self.equipment_combo["values"] = (
 			"cnc_mill", "robot_arm", "agv", "injection_molder", "conveyor"
 		)
 		self.equipment_combo.set("cnc_mill")
 		self.equipment_combo.grid(row=0, column=1, padx=5, pady=5)
-		self.equipment_combo.bind("<<ComboboxSelected>>", self.update_sensor_display)
+		self.equipment_combo.bind("<<ComboboxSelected>>", self.update_sensor_display) # call update_sensor_display when user selected a value
 
-		self.start_button = ttk.Button(control_frame, text="Start", command=self.start_equipment)
+		self.start_button = ttk.Button(control_frame, text="Start", command=self.start_equipment) # Start button, calls start_equipment when clicked
 		self.start_button.grid(row=0, column=2, padx=5, pady=5)
 
-		self.stop_button = ttk.Button(control_frame, text="Stop", command=self.stop_equipment)
+		self.stop_button = ttk.Button(control_frame, text="Stop", command=self.stop_equipment) # Stop button, calls stop_equipment when clicked
 		self.stop_button.grid(row=0, column=3, padx=5, pady=5)
 
 		# Sensor Reading Frame
-		readings_frame = ttk.LabelFrame(self.master, text="Sensor Readings")
+		readings_frame = ttk.LabelFrame(self.master, text="Sensor Readings") # Label frame for sensor reading
 		readings_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
+		# List out sensor labels, readings and units, unused values are denoted as "N/A"
 		self.sensor_labels = {}
 		for i, sensor in enumerate(self.sensor_types):
 			tk.Label(readings_frame, text=f"{sensor.capitalize()}:").grid(row=i, column=0, sticky="w")
@@ -61,6 +63,7 @@ class FactoryMonitorGUI:
 		self.client.connect(config.BROKER, config.PORT)
 		self.client.loop_start()
 
+	# subscribe to equipment sensors and alerts topic
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
 			messagebox.showinfo("MQTT", "Connected to MQTT Broker\n")
@@ -74,6 +77,8 @@ class FactoryMonitorGUI:
 			payload = json.loads(msg.payload.decode())
 			topic_parts = msg.topic.split("/")
 
+			# if there is a message from equipment topic, update sensor reading
+			# if there is a message from alerts topic, show alert message box
 			if "equipment" in topic_parts:
 				self.update_sensor_reading(topic_parts[-2], topic_parts[-1], payload)
 			elif "alerts" in topic_parts:
@@ -99,22 +104,30 @@ class FactoryMonitorGUI:
 	def start_equipment(self):
 		equipment_type = self.equipment_var.get()
 		topic = f"{config.TOP_LEVEL_TOPIC}/factory/command/{equipment_type}"
+		# send !start command to command topic
 		self.client.publish(topic, "!start")
+
 	def stop_equipment(self):
 		equipment_type = self.equipment_var.get()
 		topic = f"{config.TOP_LEVEL_TOPIC}/factory/command/{equipment_type}"
+		# send !stop command to command topic
 		self.client.publish(topic, "!stop")
 
+# called when closing the program window
 def on_closing():
 	if messagebox.askokcancel("Quit", "Do you want to quit?"):
+		# terminate all running equipment and monitor processes
 		equipment_process.terminate()
 		monitor_process.terminate()
 		root.destroy()
 
 if __name__ == "__main__":
+	# run equipment and monitor programs
 	equipment_process = subprocess.Popen(["python3", "equipment.py"])
 	monitor_process = subprocess.Popen(["python3", "monitor.py"])
+
 	root = tk.Tk()
 	app = FactoryMonitorGUI(root)
+	# set on_closing as call back for windows closing event
 	root.protocol("WM_DELETE_WINDOW", on_closing)
 	root.mainloop()

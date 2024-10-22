@@ -8,6 +8,7 @@ import threading
 
 import config
 
+# randomly generate sensor data
 def generate_sensor_data(sensor_type):
 	if sensor_type == "vibration":
 		return round(random.uniform(0, 10), 2)  # mm/s^2
@@ -34,6 +35,7 @@ def generate_sensor_data(sensor_type):
 	else:
 		return 0
 
+# retrieve appropriate unit for sensor types
 def get_unit(sensor_type):
 	units = {
 		"vibration": "mm/s^2",
@@ -50,7 +52,12 @@ def get_unit(sensor_type):
 	}
 	return units.get(sensor_type, "")
 
+# Equipment is a multithreaded class, which means multiple equipment devices can run concurrently
 class Equipment(threading.Thread):
+	# class constructor:
+	# - call Thread's parent constructor
+	# - connect to mqtt using appropriate credentials
+	# - create maintenance_log folder if there isn't
 	def __init__(self, equipment_type):
 		threading.Thread.__init__(self)
 		self.client = mqtt.Client(f"Equipment_{equipment_type}")
@@ -76,6 +83,7 @@ class Equipment(threading.Thread):
 		self.sensor_types = self.sensor_configs.get(equipment_type, [])
 		self.running = False
 
+	# when connected, subscribe to alerts, command topic and public topic
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
 			print(f"Connected to MQTT Broker: {self.equipment_type}")
@@ -85,14 +93,18 @@ class Equipment(threading.Thread):
 		else:
 			print(f"Failed to connect, return code {rc}")
 
+	# when received a message, check whether it's from alerts topic or command topic
 	def on_message(self, client, userdata, msg):
 		try:
 			if (msg.topic.startswith(f"{config.TOP_LEVEL_TOPIC}/factory/alerts")):
+				# if message is from alerts topic, generate maintenance message
 				payload = json.loads(msg.payload.decode())
 				topic_parts = msg.topic.split("/")
 				sensor_type = topic_parts[-1]
 				self.generate_maintenance_message(sensor_type, payload)
 			elif msg.topic == f"{config.TOP_LEVEL_TOPIC}/factory/command/{self.equipment_type}":
+				# if message is from command topic, check the message content
+				# if it's !start, set the running properties to true, otherwise set to false
 				command = msg.payload.decode()
 				if command == "!start":
 					self.running = True
@@ -106,6 +118,7 @@ class Equipment(threading.Thread):
 			print(f"Received message with invalid topic structure: {msg.topic}")
 
 	def generate_maintenance_message(self, sensor_type, alert_data):
+		# maintenance message body
 		maintenance_message = {
 			"equipment_type": self.equipment_type,
 			"sensor_type": sensor_type,
@@ -120,9 +133,11 @@ class Equipment(threading.Thread):
 		topic = f"{config.TOP_LEVEL_TOPIC}/factory/maintenance/requests/{self.equipment_type}"
 		payload = json.dumps(maintenance_message)
 		self.client.publish(topic, payload)
+		# call dumping function after publish message
 		self.dump_maintenance_log(sensor_type, alert_data)
 
 	def dump_maintenance_log(self, sensor_type, alert_data):
+		# content to be dumped
 		maintenance_message = (
 			"\n----------\n"
 			f"Maintenance required for {self.equipment_type}\n"
@@ -135,6 +150,7 @@ class Equipment(threading.Thread):
 			"\n----------\n"
 		)
 
+		# open (or create) maintenance log file for specified equipment, then write the above message
 		filename = os.path.join(self.maintenance_dir, f"{self.equipment_type}_maintenance.log")
 		with open(filename, "a") as f:
 			f.write(maintenance_message)
@@ -144,6 +160,7 @@ class Equipment(threading.Thread):
 	def publish_sensor_data(self):
 		for sensor_type in self.sensor_types:
 			topic = f"{config.TOP_LEVEL_TOPIC}/factory/equipment/{self.equipment_type}/{sensor_type}"
+			# sensor message content, consists of current timestamp, sensor readings and their respective unit
 			payload = json.dumps({
 				"timestamp": time.ctime(),
 				"value": generate_sensor_data(sensor_type),
@@ -156,9 +173,10 @@ class Equipment(threading.Thread):
 		self.client.loop_start()
 		try:
 			while True:
+				# publish sensors when running property is true
 				if self.running:
 					self.publish_sensor_data()
-				time.sleep(2)
+				time.sleep(2) # sleeps for 2 seconds
 		except KeyboardInterrupt:
 			print(f"Sensor node stopped: {self.equipment_type}")
 		finally:
@@ -168,11 +186,13 @@ if __name__ == '__main__':
 	equipment_types = ["cnc_mill", "robot_arm", "agv", "injection_molder", "conveyor"]
 	equipment_threads = []
 
+	# start running thread jobs for all equipment types
 	for equipment_type in equipment_types:
 		equipment = Equipment(equipment_type)
 		equipment.start()
 		equipment_threads.append(equipment)
 
+	# keep running until the program is closed by keyboard interrupt or by another process
 	try:
 		for thread in equipment_threads:
 			thread.join()

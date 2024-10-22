@@ -7,6 +7,7 @@ import logging
 
 import config
 
+# predefined equipment thresholds
 EQUIPMENT_THRESHOLDS = {
 	"cnc_mill": {
 		"vibration": 8.0,
@@ -36,6 +37,7 @@ EQUIPMENT_THRESHOLDS = {
 }
 
 class Monitor:
+	# class constructor, handling mqtt connection
 	def __init__(self):
 		self.client = mqtt.Client("Monitor")
 		self.client.username_pw_set(config.USERNAME, config.PASSWORD)
@@ -45,6 +47,7 @@ class Monitor:
 
 		self.equipment_thresholds = EQUIPMENT_THRESHOLDS
 
+	# subscribe to equipment sensors topic and public topic after successfully connected
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
 			print("Connected to MQTT Broker")
@@ -55,6 +58,7 @@ class Monitor:
 
 	def on_message(self, client, userdata, msg):
 		try:
+			# when receive a message from equipment sensors, extract equipment type and sensor type then send to process_sensor_data function
 			if (msg.topic.startswith(f"{config.TOP_LEVEL_TOPIC}/factory/equipment")):
 				payload = json.loads(msg.payload.decode())
 				topic_parts = msg.topic.split("/")
@@ -68,6 +72,7 @@ class Monitor:
 		except IndexError:
 			print(f"Received message with invalid topic structure: {msg.topic}")
 
+	# if sensor value surpass its threshold, generate alert message
 	def process_sensor_data(self, equipment_type, sensor_type, value):
 		threshold = self.equipment_thresholds[equipment_type][sensor_type]
 		if threshold is not None:
@@ -76,6 +81,7 @@ class Monitor:
 
 	def generate_alert(self, equipment_type, sensor_type, value, threshold):
 		topic = f"{config.TOP_LEVEL_TOPIC}/factory/alerts/{equipment_type}/{sensor_type}"
+		# alert message content
 		payload = json.dumps({
 			"timestamp": int(time.time()),
 			"alert_level": "warning",
@@ -91,5 +97,4 @@ class Monitor:
 		self.client.loop_forever()
 
 if __name__ == "__main__":
-
 	Monitor().run()

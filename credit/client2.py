@@ -3,6 +3,8 @@ import json
 
 from paho.mqtt import client as mqtt_client
 
+# this code is pretty similar to sub.py from pass, but now subscribed to public topic
+
 broker = 'rule28.i4t.swin.edu.au'
 port = 1883
 # Generate a client id with prefix and random number

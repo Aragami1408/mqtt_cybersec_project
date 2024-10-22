@@ -3,6 +3,12 @@ from tkinter import scrolledtext, messagebox, ttk
 import paho.mqtt.client as mqtt
 
 class MQTTClient:
+	# class constructor, when the class is created the following are done:
+	# - set windows title
+	# - set windows size
+	# - disable resize
+	# - create mqtt client and set on_connect and on_message callback function
+	# - draw widgets
 	def __init__(self, master):
 		self.master = master
 		self.master.title("MQTT Client")
@@ -15,41 +21,42 @@ class MQTTClient:
 
 		self.create_widgets()
 
+	# drawing widgets, consists of four parts: connection, subscribe, publish, messages
 	def create_widgets(self):
 		# Connection Frame
-		connection_frame = ttk.LabelFrame(self.master, text="Broker Connection")
+		connection_frame = ttk.LabelFrame(self.master, text="Broker Connection") # Create label frame for connection fields
 		connection_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-		ttk.Label(connection_frame, text="Broker:").grid(row=0, column=0, sticky="w")
+		ttk.Label(connection_frame, text="Broker:").grid(row=0, column=0, sticky="w") # Broker entry
 		self.broker_entry = ttk.Entry(connection_frame)
 		self.broker_entry.grid(row=0, column=1)
 		self.broker_entry.insert(0, "rule28.i4t.swin.edu.au")
 
-		ttk.Label(connection_frame, text="Port:").grid(row=1, column=0, sticky="w")
+		ttk.Label(connection_frame, text="Port:").grid(row=1, column=0, sticky="w") # Port entry
 		self.port_entry = ttk.Entry(connection_frame)
 		self.port_entry.grid(row=1, column=1)
 		self.port_entry.insert(0, "1883")
 
-		ttk.Label(connection_frame, text="Username:").grid(row=2, column=0, sticky="w")
+		ttk.Label(connection_frame, text="Username:").grid(row=2, column=0, sticky="w") # Username entry
 		self.username_entry = ttk.Entry(connection_frame)
 		self.username_entry.grid(row=2, column=1)
 
-		ttk.Label(connection_frame, text="Password:").grid(row=3, column=0, sticky="w")
-		self.password_entry = ttk.Entry(connection_frame, show="*")
+		ttk.Label(connection_frame, text="Password:").grid(row=3, column=0, sticky="w") # Password entry
+		self.password_entry = ttk.Entry(connection_frame, show="*") # Use '*' to hide typed characters on text box
 		self.password_entry.grid(row=3, column=1)
 
-		self.connect_button = ttk.Button(connection_frame, text="Connect", command=self.connect)
+		self.connect_button = ttk.Button(connection_frame, text="Connect", command=self.connect) # Connect button, which calls the connect method
 		self.connect_button.grid(row=4, column=0, columnspan=2, pady=5)
 
 		# Subscribe Frame
-		subscribe_frame = ttk.LabelFrame(self.master, text="Subscribe")
+		subscribe_frame = ttk.LabelFrame(self.master, text="Subscribe") # Create label frame for subscribe fields
 		subscribe_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
-		ttk.Label(subscribe_frame, text="Topic:").grid(row=0, column=0, sticky="w")
+		ttk.Label(subscribe_frame, text="Topic:").grid(row=0, column=0, sticky="w") # Topic entry
 		self.subscribe_entry = ttk.Entry(subscribe_frame)
 		self.subscribe_entry.grid(row=0, column=1)
 
-		ttk.Label(subscribe_frame, text="QoS:").grid(row=0, column=2, padx=5)
+		ttk.Label(subscribe_frame, text="QoS:").grid(row=0, column=2, padx=5) # QoS drop down menu, selecting three levels 0, 1, and 2
 		self.qos_subscribe = tk.StringVar()
 		self.qos_subscribe_combobox = ttk.Combobox(subscribe_frame, textvariable=self.qos_subscribe)
 		self.qos_subscribe_combobox.grid(row=0, column=3)
@@ -60,27 +67,27 @@ class MQTTClient:
 		)
 		self.qos_subscribe_combobox.current(0)
 
-		self.subscribe_button = ttk.Button(subscribe_frame, text="Subscribe", command=self.subscribe)
+		self.subscribe_button = ttk.Button(subscribe_frame, text="Subscribe", command=self.subscribe) # Subscribe button, which calls subscribe method
 		self.subscribe_button.grid(row=1, column=0, columnspan=2, pady=5)
 
 		# Publish Frame
-		publish_frame = ttk.LabelFrame(self.master, text="Publish")
+		publish_frame = ttk.LabelFrame(self.master, text="Publish") # Create label frame for publish fields
 		publish_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
 
-		ttk.Label(publish_frame, text="Topic:").grid(row=0, column=0, sticky="w")
+		ttk.Label(publish_frame, text="Topic:").grid(row=0, column=0, sticky="w") # Topic entry
 		self.publish_topic_entry = ttk.Entry(publish_frame)
 		self.publish_topic_entry.grid(row=0, column=3)
 
-		ttk.Label(publish_frame, text="Message:").grid(row=1, column=0, sticky="w")
+		ttk.Label(publish_frame, text="Message:").grid(row=1, column=0, sticky="w") # Message entry
 		self.publish_message_entry = ttk.Entry(publish_frame)
 		self.publish_message_entry.grid(row=1, column=3)
 
-		ttk.Label(publish_frame, text="Retain:").grid(row=2,column=0, sticky="w", columnspan=2)
+		ttk.Label(publish_frame, text="Retain:").grid(row=2,column=0, sticky="w", columnspan=2) # Retain check box
 		self.retain = tk.IntVar()
 		self.retain_checkbutton = ttk.Checkbutton(publish_frame, variable=self.retain, onvalue=1, offvalue=0)
 		self.retain_checkbutton.grid(row=2, column=1)
 
-		ttk.Label(publish_frame, text="QoS:").grid(row=2, column=2, padx=5)
+		ttk.Label(publish_frame, text="QoS:").grid(row=2, column=2, padx=5) # Qos drop down menu, similar to subscribe menu's QoS
 		self.qos_publish = tk.StringVar()
 		self.qos_publish_combobox = ttk.Combobox(publish_frame, textvariable=self.qos_publish)
 		self.qos_publish_combobox.grid(row=2,column=3)
@@ -91,47 +98,56 @@ class MQTTClient:
 		)
 		self.qos_publish_combobox.current(0)
 
-		self.publish_button = ttk.Button(publish_frame, text="Publish", command=self.publish)
+		self.publish_button = ttk.Button(publish_frame, text="Publish", command=self.publish) # Publish button, which calls publish method
 		self.publish_button.grid(row=3, column=0, columnspan=2, pady=5)
 
 		# Messages Frame
-		messages_frame = ttk.LabelFrame(self.master, text="Messages")
+		messages_frame = ttk.LabelFrame(self.master, text="Messages") # Create label frame for messages
 		messages_frame.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
 
-		self.messages_text = scrolledtext.ScrolledText(messages_frame, height=15)
+		self.messages_text = scrolledtext.ScrolledText(messages_frame, height=15) # Messages scroll text
 		self.messages_text.pack(expand=True, fill="both")
 
-		self.master.grid_columnconfigure(0, weight=1)
+		self.master.grid_columnconfigure(0, weight=1) # Configuring column and row index of a grid
 		self.master.grid_rowconfigure(3, weight=1)
 
+	# connect method
 	def connect(self):
+		# get server connection parameters from textboxes
 		broker = self.broker_entry.get()
 		port = int(self.port_entry.get())
 		username = self.username_entry.get()
 		password = self.password_entry.get()
 
-		if username and password:
+		# if username and password are not specified, trigger an error messagebox
+		if not (username and password):
+			messagebox.showerror("Server connection", "Please enter username and password")
+		else:
+		# otherwise connect as usual
 			self.client.username_pw_set(username, password)
-
 			try:
 				self.client.connect(broker, port)
 				self.client.loop_start()
 			except Exception as e:
 				messagebox.showerror("Connection Error", str(e))
 
+	# subscribe method
 	def subscribe(self):
+		# topics are comma separated
 		topics = self.subscribe_entry.get().split(',')
 		for topic in topics:
-			topic = topic.strip()
-			self.client.subscribe(topic, qos=int(self.qos_subscribe.get()))
+			topic = topic.strip() # trip whitespaces
+			self.client.subscribe(topic, qos=int(self.qos_subscribe.get())) # need to cast qos_subcribe to int
 			self.messages_text.insert(tk.END, f"Subscribed to {topic}\n")
 
+	#publish method
 	def publish(self):
+		# topics are comma separated
 		topics = self.publish_topic_entry.get().split(',')
 		message = self.publish_message_entry.get()
 		for topic in topics:
 			topic = topic.strip()
-			self.client.publish(topic, message, qos=int(self.qos_publish.get()), retain=bool(self.retain.get()))
+			self.client.publish(topic, message, qos=int(self.qos_publish.get()), retain=bool(self.retain.get())) # also convert retain to bool
 			self.messages_text.insert(tk.END, f"Published to {topic}: {message}\n")
 			self.messages_text.insert(tk.END, f"\tQoS: {int(self.qos_publish.get())}. Retain = {bool(self.retain.get())}\n")
 
