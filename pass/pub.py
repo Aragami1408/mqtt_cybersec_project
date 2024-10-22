@@ -10,52 +10,25 @@ client_id = f"python-mqtt-{random.randint(0, 1000)}" # Client id
 username = "<103825154>" # Username
 password = "<103825154>" # Password
 
-# Reconnection constants
-FIRST_RECONNECT_DELAY = 1
-RECONNECT_RATE = 2
-MAX_RECONNECT_COUNT = 12
-MAX_RECONNECT_DELAY = 60
-
 # When the client initiate connection
 def on_connect(client, userdata, flags, rc):
 	if rc == 0:
+		# if the client successfully connected to the broker
 		print("Connected to MQTT Broker")
 	else:
+		# if the client failed to connect to the broker
 		print("Failed to connect, return code %d\n", rc)
 
-# When the client signifies end of connection
-# Auto reconnect upon disconnect for MAX_RECONNECT_COUNT times
-# each reconnect count will attempt to reconnect in FIRST_RECONNECT_DELAY
-# then reconnect delay will double after each count
-def on_disconnect(client, userdata, rc):
-	logging.info("Disconnected with result code: %s", rc)
-	reconnect_count, reconnect_delay = 0, FIRST_RECONNECT_DELAY
-	while reconnect_count < MAX_RECONNECT_COUNT:
-		logging.info("Reconnecting in %d seconds...", reconnect_delay)
-		time.sleep(reconnect_delay)
-
-		try:
-			client.reconnect()
-			logging.info("Reconnected successfully!")
-			return
-		except Exception as err:
-			logging.error("%s. Reconnect failed. Retrying...", err)
-
-		reconnect_delay *= RECONNECT_RATE
-		reconnect_delay = min(reconnect_delay, MAX_RECONNECT_DELAY)
-		reconnect_count += 1
-
-	logging.info("Reconnect failed after %s attempts. Exiting...", reconnect_count)
-
 # use this function to initiate connection
+# before connect to the mqtt broker, provide username, password, broker and port to the client instance
 def connect_mqtt():
 	client = mqtt_client.Client(client_id)
 	client.username_pw_set(username, password)
 	client.on_connect = on_connect
-	client.on_disconnect = on_disconnect
 	client.connect(broker, port)
 	return client
 
+# one private topic
 topic_temperature = "<103825154>/temperature"
 
 # Dummy function for temperature topic
